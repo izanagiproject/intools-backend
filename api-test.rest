@@ -1,0 +1,7 @@
+### GET ALL LST MATERIALS HV MOTOR
+# GET http://localhost:8080/api/v1/intools/electra/materials/motor/high-voltage?limit=1
+
+
+
+
+GET http://127.0.0.1:8080/api/v1/intools/electra/materials/motor/high-voltage?capacity=undefined&voltage=undefined&current=undefined&rpm=990&shaft_diameter=102&base_width=undefined&base_length=undefined&c=undefined&e=undefined&h=undefined

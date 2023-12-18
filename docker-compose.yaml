@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - GREETING_MESSAGE=Hello from Custom Greeting
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
