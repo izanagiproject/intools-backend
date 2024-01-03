@@ -14,8 +14,11 @@ type Material struct {
 	PIC PIC `json:"pic"`
 	RotorBar RotorBar `json:"rotor_bar"`
 	StartingCurrent StartingCurrent `json:"starting_current"`
-	Frame string `json:"frame"`
+	Frame int `json:"frame"`
 	Type string `json:"type"`
+	Installed int8 `json:"installed_qty"`
+	StandBy int8 `json:"standby_qty"`
+	Spare int8 `json:"spare_qty"`
 }
 
 type Specification struct {

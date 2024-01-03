@@ -17,15 +17,15 @@ import (
 
 var db *pgxpool.Pool
 
-var	connString = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable&pool_max_conns=10", "postgres", "eicdev", "localhost", "15432", "electra")
+var connString = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable&pool_max_conns=10", "postgres", "eicdev", "localhost", "15432", "electra")
 
 type Material struct {
-	ID       int    `json:"id"`
-	QCode    string `json:"qcode"`
-	Plant    string `json:"plant"`
-	Area     string `json:"area"`
-	Category string `json:"category"`
-	Name     string `json:"name"`
+	ID             int    `json:"id"`
+	QCode          string `json:"qcode"`
+	Plant          string `json:"plant"`
+	Area           string `json:"area"`
+	Category       string `json:"category"`
+	Name           string `json:"name"`
 	Specifications struct {
 		Capacity int `json:"capacity"`
 		Voltage  int `json:"voltage"`
@@ -40,12 +40,17 @@ type Material struct {
 		E             int `json:"e"`
 		H             int `json:"h"`
 	} `json:"size"`
-	Maker string `json:"maker"`
-	PIC   struct {
-		Team   string `json:"team"`
-		Name   string `json:"name"`
-		Phone  string `json:"phone"`
-		Email  string `json:"email"`
+	Maker     string `json:"maker"`
+	Frame     int    `json:"frame"`
+	Type      string `json:"type"`
+	Installed int8   `json:"installed_qty"`
+	StandBy   int8   `json:"standby_qty"`
+	Spare     int8   `json:"spare_qty"`
+	PIC       struct {
+		Team  string `json:"team"`
+		Name  string `json:"name"`
+		Phone string `json:"phone"`
+		Email string `json:"email"`
 	} `json:"pic"`
 }
 
@@ -63,10 +68,11 @@ type APIResponse struct {
 
 // QueryParams represents the query parameters
 type QueryParams struct {
-	Capacity int `json:"capacity"`
-	Voltage  int `json:"voltage"`
-	Current  int `json:"current"`
-	RPM      int `json:"rpm"`
+	Frame         int `json:"frame"`
+	Capacity      int `json:"capacity"`
+	Voltage       int `json:"voltage"`
+	Current       int `json:"current"`
+	RPM           int `json:"rpm"`
 	ShaftDiameter int `json:"shaft_diameter"`
 	BaseWidth     int `json:"base_width"`
 	BaseLength    int `json:"base_length"`
@@ -130,11 +136,10 @@ func main() {
 func getMaterials(w http.ResponseWriter, r *http.Request) {
 	// Add CORS headers to the response
 	w.Header().Add("Access-Control-Allow-Origin", "*")
-    w.Header().Add("Access-Control-Allow-Credentials", "true")
-    w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-    w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
-	
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -157,7 +162,7 @@ func getMaterials(w http.ResponseWriter, r *http.Request) {
 
 	// Perform raw query
 	rows, err := db.Query(context.Background(),
-		`SELECT plant, area, category, name, capacity, voltage, current, rpm, shaft_diameter, base_width, base_length, c, e, h, maker, id, qcode
+		`SELECT plant, area, category, name, capacity, voltage, current, rpm, shaft_diameter, base_width, base_length, c, e, h, maker, id, qcode, frame, installed_qty, standby_qty, spare_qty
 		FROM public.list_materials`)
 	if err != nil {
 		http.Error(w, "Error querying the database", http.StatusInternalServerError)
@@ -171,10 +176,11 @@ func getMaterials(w http.ResponseWriter, r *http.Request) {
 		var material Material
 		err := rows.Scan(
 			&material.Plant, &material.Area, &material.Category, &material.Name,
-			&material.Specifications.Capacity, &material.Specifications.Voltage, &material.Specifications.Current, 
-			&material.Specifications.RPM, &material.Size.ShaftDiameter, &material.Size.BaseWidth, 
+			&material.Specifications.Capacity, &material.Specifications.Voltage, &material.Specifications.Current,
+			&material.Specifications.RPM, &material.Size.ShaftDiameter, &material.Size.BaseWidth,
 			&material.Size.BaseLength, &material.Size.C, &material.Size.E, &material.Size.H,
-			&material.Maker, &material.ID, &material.QCode,
+			&material.Maker, &material.ID, &material.QCode, &material.Frame, &material.Installed, &material.StandBy,
+			&material.Spare,
 		)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error scanning row %v", err.Error()), http.StatusInternalServerError)
@@ -216,14 +222,13 @@ func getMaterials(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResponse)
 }
 
-func getMaterialsByParams(w http.ResponseWriter, r *http.Request)  {
+func getMaterialsByParams(w http.ResponseWriter, r *http.Request) {
 	// Add CORS headers to the response
 	w.Header().Add("Access-Control-Allow-Origin", "*")
-    w.Header().Add("Access-Control-Allow-Credentials", "true")
-    w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-    w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
-	
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -256,8 +261,8 @@ func getMaterialsByParams(w http.ResponseWriter, r *http.Request)  {
 		C:             parseFloatQueryParam(r, "c"),
 		E:             parseFloatQueryParam(r, "e"),
 		H:             parseFloatQueryParam(r, "h"),
+		Frame:         parseFloatQueryParam(r, "frame"),
 	}
-
 
 	// Execute the dynamic SELECT query
 	materials, err := selectMaterialsByParams(context.Background(), db, params)
@@ -267,32 +272,32 @@ func getMaterialsByParams(w http.ResponseWriter, r *http.Request)  {
 	}
 
 	// Check if there are no matching records
-    if len(materials) == 0 {
-        // Construct a default response
-        defaultResponse := APIResponse{
-            Request: struct {
-                Limit  int `json:"limit"`
-                Offset int `json:"offset"`
-            }{Limit: limit, Offset: offset},
-            Response: struct {
-                Count   int        `json:"count"`
-                Success bool       `json:"success"`
-                Data    []Material `json:"data"`
-            }{Count: 0, Success: true, Data: []Material{}},
-        }
+	if len(materials) == 0 {
+		// Construct a default response
+		defaultResponse := APIResponse{
+			Request: struct {
+				Limit  int `json:"limit"`
+				Offset int `json:"offset"`
+			}{Limit: limit, Offset: offset},
+			Response: struct {
+				Count   int        `json:"count"`
+				Success bool       `json:"success"`
+				Data    []Material `json:"data"`
+			}{Count: 0, Success: true, Data: []Material{}},
+		}
 
-        // Marshal default response to JSON
-        jsonResponse, err := json.Marshal(defaultResponse)
-        if err != nil {
-            http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-            return
-        }
+		// Marshal default response to JSON
+		jsonResponse, err := json.Marshal(defaultResponse)
+		if err != nil {
+			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+			return
+		}
 
-        // Set response headers and write JSON response
-        w.Header().Set("Content-Type", "application/json")
-        w.Write(jsonResponse)
-        return
-    }
+		// Set response headers and write JSON response
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonResponse)
+		return
+	}
 
 	// Apply pagination in the code
 	startIndex := offset
@@ -346,6 +351,8 @@ func parseFloatQueryParam(r *http.Request, paramName string) int {
 func selectMaterialsByParams(ctx context.Context, db *pgxpool.Pool, params QueryParams) ([]Material, error) {
 	query, values := buildSelectQuery(params)
 
+	fmt.Println("QUERY: ", query)
+
 	rows, err := db.Query(ctx, query, values...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to execute query: %w", err)
@@ -358,10 +365,11 @@ func selectMaterialsByParams(ctx context.Context, db *pgxpool.Pool, params Query
 		var material Material
 		err := rows.Scan(
 			&material.Plant, &material.Area, &material.Category, &material.Name,
-			&material.Specifications.Capacity, &material.Specifications.Voltage, &material.Specifications.Current, 
-			&material.Specifications.RPM, &material.Size.ShaftDiameter, &material.Size.BaseWidth, 
+			&material.Specifications.Capacity, &material.Specifications.Voltage, &material.Specifications.Current,
+			&material.Specifications.RPM, &material.Size.ShaftDiameter, &material.Size.BaseWidth,
 			&material.Size.BaseLength, &material.Size.C, &material.Size.E, &material.Size.H,
-			&material.Maker, &material.ID, &material.QCode,
+			&material.Maker, &material.ID, &material.QCode, &material.Frame, &material.Installed, &material.StandBy,
+			&material.Spare,
 		)
 		if err != nil {
 			fmt.Printf("Error scanning row %v", err.Error())
@@ -378,13 +386,17 @@ func selectMaterialsByParams(ctx context.Context, db *pgxpool.Pool, params Query
 
 // Function to build a dynamic SELECT query based on the provided parameters
 func buildSelectQuery(params QueryParams) (string, []interface{}) {
-	query := "SELECT plant, area, category, name, capacity, voltage, current, rpm, shaft_diameter, base_width, base_length, c, e, h, maker, id, qcode FROM public.list_materials WHERE true"
+	query := "SELECT plant, area, category, name, capacity, voltage, current, rpm, shaft_diameter, base_width, base_length, c, e, h, maker, id, qcode, frame, installed_qty, standby_qty, spare_qty FROM public.list_materials WHERE true"
 	var values []interface{}
 
 	// Check each parameter and add it to the query if it's not zero
 	if params.Capacity != 0 {
-		query += " AND capacity = $" + strconv.Itoa(len(values)+1)
+		query += " AND capacity >= $" + strconv.Itoa(len(values)+1)
 		values = append(values, params.Capacity)
+	}
+	if params.Frame != 0 {
+		query += " AND frame = $" + strconv.Itoa(len(values)+1)
+		values = append(values, params.Frame)
 	}
 	if params.Voltage != 0 {
 		query += " AND voltage = $" + strconv.Itoa(len(values)+1)
